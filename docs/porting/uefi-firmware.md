@@ -259,6 +259,40 @@ A driver can live in the firmware volume or in the payload.
 
 See [UEFI drivers](/drivers/uefi-drivers) for the INF, entry point and injection details.
 
+## File-loaded payloads on a separate FAT partition
+
+A board can keep Mu firmware in its Android boot image and place the UniXNU
+application, loader and payload on a separate UEFI-readable FAT partition.
+This differs from the embedded FV/initrd integration above; record the chosen
+path in the device's firmware and image-assembly areas.
+
+For this path, the firmware must publish the storage, partition, Disk I/O,
+FAT, GOP and input services before starting the application. The board's boot
+policy must identify the intended partition and launch its ARM64 application.
+A volume label or filesystem handle index does not establish GPT identity.
+Do not assume firmware can read an Android logical partition or an ext4 volume.
+
+Build the UniXNU application and DarwinBoot driver from the selected source
+revisions using their INF recipes. A standalone application can occupy the
+standard `\EFI\BOOT\BOOTAA64.EFI` path. Keep its configuration and referenced
+payload files on the same filesystem, and load the standalone driver before
+selecting the XNU entry:
+
+```toml
+[[driver]]
+path = "Payloads/DarwinBoot.efi"
+```
+
+The driver path is relative to the payload configuration. Confirm that the
+driver starts and publishes the loader protocol, then separately record kernel
+loading, the actual memory allocation, ExitBootServices and hardware ownership.
+FAT readability and menu output alone do not qualify those later checkpoints.
+
+This disk-backed path does not require the initrd block device supplied by
+`UniXNURamDiskDxe`; it needs the physical storage stack instead. Do not reclaim
+firmware reservations to enlarge the OS window. Installing a whole partition
+image also replaces existing EFI files, including any Windows entry.
+
 ## Next steps
 
 - [Device tree](/porting/device-tree)

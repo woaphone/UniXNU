@@ -255,6 +255,33 @@ clang --target=aarch64-none-elf -c \
 
 INF、入口和注入细节见 [UEFI 驱动](/zh/drivers/uefi-drivers)。
 
+## 从独立 FAT 分区加载
+
+设备可以把 Mu 固件保留在 Android boot 镜像中，将 UniXNU 应用、加载器和负载放在
+UEFI 可读取的独立 FAT 分区。这与上文的 FV/initrd 内嵌方案不同，需要在设备的固件与
+镜像组装区域中记录选定路径。
+
+固件必须先提供存储、分区、Disk I/O、FAT、GOP 和输入服务，再启动应用。板级启动策略
+需要识别目标分区并运行其 ARM64 应用。卷标或文件系统 handle 序号不能证明 GPT 身份。
+不要默认固件能读取 Android 逻辑分区或 ext4 卷。
+
+按固定版本源码的 INF 配方分别构建 UniXNU 应用和 DarwinBoot 驱动。独立应用可以放在
+标准的 `\EFI\BOOT\BOOTAA64.EFI` 路径。配置和引用的负载文件保留在同一文件系统中，
+选择 XNU 项前通过配置加载独立驱动：
+
+```toml
+[[driver]]
+path = "Payloads/DarwinBoot.efi"
+```
+
+驱动路径相对于负载配置。确认驱动已启动并提供加载器协议后，再分别记录内核加载、
+实际内存分配、ExitBootServices 和硬件所有权交接。FAT 可读或菜单显示不能代替后续
+检查点的验证。
+
+这条磁盘路径不需要 `UniXNURamDiskDxe` 提供的 initrd 块设备，需要的是物理存储栈。
+不要通过回收固件保留区扩大 OS 窗口。写入整个分区镜像也会替换已有 EFI 文件，
+包括可能存在的 Windows 入口。
+
 ## 下一步
 
 - [设备树](/zh/porting/device-tree)
